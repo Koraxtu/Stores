@@ -1,9 +1,13 @@
-from flask import request #Flask
+# from flask import request #Flask
 from flask_smorest import abort, Blueprint # type: ignore
 from flask.views import MethodView
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
+from models import StoreModel
 from schemas import StoreSchema
-from db import stores
-import uuid
+from db import db
+
+#import uuid
 from typing import Any
 
 
@@ -12,38 +16,34 @@ blp = Blueprint("Stores", __name__, description="Operations on stores")
 @blp.route("/store")
 class StoreList(MethodView):
     @blp.response(200, StoreSchema(many=True))
-    def get(self) -> Any:
-        return stores.values()
+    def get(self) -> list:
+        return StoreModel.query.all()
     
     @blp.arguments(StoreSchema)
     @blp.response(201, StoreSchema)
     def post(self, store_data) -> tuple[dict, int]:
-        for store in stores:
-            if store_data["name"] == store["name"]:
-                abort(400, message="Bad request. Ensure unique store name.")
+        store = StoreModel(**store_data)
 
-        store_id = uuid.uuid4().hex
-        new_store = {**store_data, "id": store_id}
-        stores[store_id] = new_store
-        return new_store, 201
+        try:
+            db.session.add(store)
+            db.session.commit()
+        except IntegrityError:
+            abort(400, message="A store with that name already exists.")
+        except SQLAlchemyError:
+            abort(500, message="An error occurred while inserting the item.")
+        return store, 201
 
 
 @blp.route("/store/<string:store_id>")
 class Store(MethodView):
     @blp.response(200, StoreSchema)
     def get(self, store_id: str) -> Any:
-        try:
-            inventory = stores[store_id]
-        except KeyError:
-            abort(404, message="Store not found.")
-        else:
-            if len(inventory) == 0:
-                return {"message": "No store inventory."}, 204
-            return inventory, 200
+        store = StoreModel.query.get_or_404(store_id)
+        return store
+        raise NotImplementedError("Deleting an item is not implemented.")
 
     def delete(self, store_id) -> Any:
-        try:
-            del stores[store_id]
-            return {"message": "Store deleted."}
-        except KeyError:
-            abort(404, message="Store not found.")
+        store = StoreModel.query.get_or_404(store_id)
+        db.session.delete(store)
+        db.session.commit()
+        return {"message": "Store deleted."}
