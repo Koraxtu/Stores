@@ -40,7 +40,6 @@ class Store(MethodView):
     def get(self, store_id: str) -> Any:
         store = StoreModel.query.get_or_404(store_id)
         return store
-        raise NotImplementedError("Deleting an item is not implemented.")
 
     def delete(self, store_id) -> Any:
         store = StoreModel.query.get_or_404(store_id)
