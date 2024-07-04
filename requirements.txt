@@ -1,6 +1,7 @@
 flask
 flask-smorest
 python-dotenv
-uuid
 sqlalchemy
 flask-sqlalchemy
+passlib
+flask_jwt_extended
